@@ -6,9 +6,7 @@ export default {
     name: 'supabase' as any,
     url: '',
     supabaseKey: '',
-    // name: 'proxy' as any,
-    // proxy_url: 'http://localhost:8081/api/v1',
-    // branch: 'master'
+    bucket: '',
   },
   media_folder: 'public/img',
   public_folder: 'img',
