@@ -1,5 +1,9 @@
 {
   "$schema": "./node_modules/nx/schemas/workspace-schema.json",
   "version": 2,
-  "projects": {}
+  "projects": {
+    "demo": "apps/demo",
+    "demo-e2e": "apps/demo-e2e",
+    "netlify-supabase-backend": "libs/netlify-supabase-backend"
+  }
 }
