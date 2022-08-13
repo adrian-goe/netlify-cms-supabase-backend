@@ -135,7 +135,7 @@ export default class SupabaseBackendImplementation implements Implementation {
   async getMediaFile(path: string): Promise<ImplementationMediaFile> {
     const file = await this.supabase.storage
       .from(this.BUCKET_ID)
-      .createSignedUrl(path, 60);
+      .createSignedUrl(path, 3600);
     console.log('getMediaFile', path, file);
     return {
       name: 'name',
