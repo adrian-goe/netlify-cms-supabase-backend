@@ -61,7 +61,6 @@ export default class SupabaseBackendImplementation implements Implementation {
   }
 
   async deleteFiles(paths: string[], commitMessage: string): Promise<void> {
-    console.log('deleteFiles', paths, commitMessage);
     const { error } = await this.supabase.storage
       .from(this.BUCKET_ID)
       .remove(paths);
@@ -79,12 +78,27 @@ export default class SupabaseBackendImplementation implements Implementation {
     return Promise.resolve([]);
   }
 
-  entriesByFolder(
+  async entriesByFolder(
     folder: string,
     extension: string,
     depth: number
   ): Promise<ImplementationEntry[]> {
-    return Promise.resolve([]);
+    const { data, error } = await this.supabase
+      .from(this.DATABASE_TABLE)
+      .select('id,data,path')
+      .filter('path', 'like', `${folder}%`);
+    if (error) {
+      return Promise.reject(error);
+    }
+    return Promise.resolve(
+      data.map((entry: { id: string; data: string; path: string }) => ({
+        data: entry.data,
+        file: {
+          path: entry.path,
+          id: entry.id,
+        },
+      }))
+    );
   }
 
   getDeployPreview(
@@ -94,8 +108,21 @@ export default class SupabaseBackendImplementation implements Implementation {
     return Promise.resolve(undefined);
   }
 
-  getEntry(path: string): Promise<ImplementationEntry> {
-    return Promise.resolve(undefined);
+  async getEntry(path: string): Promise<ImplementationEntry> {
+    const { data, error } = await this.supabase
+      .from(this.DATABASE_TABLE)
+      .select('id,data,path')
+      .eq('path', path);
+    if (!data || error) {
+      return Promise.reject(error);
+    }
+    return Promise.resolve({
+      data: data[0].data,
+      file: {
+        path: path,
+        id: data[0].data.id,
+      },
+    });
   }
 
   async getMedia(
@@ -132,18 +159,18 @@ export default class SupabaseBackendImplementation implements Implementation {
   }
 
   async getMediaFile(path: string): Promise<ImplementationMediaFile> {
-    const file = await this.supabase.storage
+    const signedFile = await this.supabase.storage
       .from(this.BUCKET_ID)
       .createSignedUrl(path, 3600);
-    console.log('getMediaFile', path, file);
+
     return {
       name: 'name',
       id: path,
       size: 123,
-      displayURL: file.signedURL,
-      path: 'file.$id',
+      displayURL: signedFile.signedURL,
+      path: path,
       draft: false,
-      url: file.signedURL,
+      url: signedFile.signedURL,
     } as ImplementationMediaFile;
   }
 
@@ -209,7 +236,7 @@ export default class SupabaseBackendImplementation implements Implementation {
       return {
         name: filePath,
         id: data?.signedURL,
-        size: 123,
+        size: uploadedData.size,
         displayURL: signedURL,
         path: filePath,
         draft: false,
