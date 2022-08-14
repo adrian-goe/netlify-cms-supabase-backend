@@ -7,6 +7,7 @@ export default {
     url: '',
     supabaseKey: '',
     bucket: '',
+    databaseTable: '',
   },
   media_folder: 'public/img',
   public_folder: 'img',

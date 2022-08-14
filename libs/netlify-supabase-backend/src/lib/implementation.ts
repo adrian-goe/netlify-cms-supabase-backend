@@ -16,12 +16,18 @@ import { uuid } from '@supabase/supabase-js/dist/main/lib/helpers';
 import { AuthenticationPage } from '@nelify-cms-supabase-backend/netlify-supabase-backend';
 
 type CONFIG = Omit<Config, 'backend'> & {
-  backend: { url: string; supabaseKey: string; bucket: string };
+  backend: {
+    url: string;
+    supabaseKey: string;
+    bucket: string;
+    databaseTable: string;
+  };
 };
 
 export default class SupabaseBackendImplementation implements Implementation {
   supabase: any;
   BUCKET_ID = '';
+  DATABASE_TABLE = '';
 
   constructor(config: CONFIG, options = {}) {
     this.supabase = createClient(
@@ -29,18 +35,11 @@ export default class SupabaseBackendImplementation implements Implementation {
       config.backend.supabaseKey
     );
     this.BUCKET_ID = config.backend.bucket;
+    this.DATABASE_TABLE = config.backend.databaseTable;
   }
 
   authComponent() {
     return AuthenticationPage;
-    // return ()=>(AuthenticationPage({onLogin:this.authenticate.bind(this),supabase:this.supabase.bind(this)}))
-
-    // return {
-    //   type: AuthenticationPage,
-    //   props: {
-    //
-    //   }
-    // };
   }
 
   async authenticate(credentials: Credentials): Promise<User> {
@@ -157,7 +156,29 @@ export default class SupabaseBackendImplementation implements Implementation {
     return Promise.resolve();
   }
 
-  persistEntry(entry: Entry, opts: PersistOptions): Promise<void> {
+  async persistEntry(entry: Entry, opts: PersistOptions): Promise<void> {
+    const databaseEntry = {
+      data: entry.dataFiles[0].raw,
+      path: entry.dataFiles[0].newPath ?? entry.dataFiles[0].path,
+      slug: entry.dataFiles[0].slug,
+    };
+
+    if (opts.newEntry) {
+      const { data, error } = await this.supabase
+        .from(this.DATABASE_TABLE)
+        .insert(databaseEntry);
+      if (!data || error) {
+        return Promise.reject(error);
+      }
+    } else {
+      const { data, error } = await this.supabase
+        .from(this.DATABASE_TABLE)
+        .update(databaseEntry)
+        .match({ slug: databaseEntry.slug });
+      if (!data || error) {
+        return Promise.reject(error);
+      }
+    }
     return Promise.resolve(undefined);
   }
 
