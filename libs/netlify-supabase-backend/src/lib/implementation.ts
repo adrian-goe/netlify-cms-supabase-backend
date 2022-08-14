@@ -61,9 +61,25 @@ export default class SupabaseBackendImplementation implements Implementation {
   }
 
   async deleteFiles(paths: string[], commitMessage: string): Promise<void> {
+    const entriesExtensions = ['json', 'yml', 'yaml'];
+    const regex = new RegExp(/.*(json|yml|yaml|md|mdx)$/gm);
+
+    const deleteEntries = paths.filter((path) => regex.test(path));
+    if (deleteEntries) {
+      for (const path of deleteEntries) {
+        await this.supabase.from(this.DATABASE_TABLE).delete().match({ path });
+      }
+      if (deleteEntries.length === paths.length) {
+        return Promise.resolve(undefined);
+      }
+    }
+
+    const deleteMedia = paths.filter(
+      (singlePath) => !deleteEntries.includes(singlePath)
+    );
     const { error } = await this.supabase.storage
       .from(this.BUCKET_ID)
-      .remove(paths);
+      .remove(deleteMedia);
     if (error) {
       return Promise.reject(error);
     }
