@@ -29,17 +29,17 @@ const AuthenticationPage = (props: {
   );
   const handleLogin = async (e: any) => {
     e.preventDefault();
-    const { error, session } = await supabase.auth.signIn({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email: e.target.elements.email.value,
       password: e.target.elements.password.value,
     });
     if (error) {
       console.log(error); // Failure
     }
-    if (session) {
+    if (data.session) {
       await props.onLogin({
-        token: session.access_token,
-        refresh_token: session.refresh_token,
+        token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
       });
     }
   };
