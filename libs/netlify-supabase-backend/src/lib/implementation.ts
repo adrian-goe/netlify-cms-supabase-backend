@@ -28,6 +28,7 @@ export default class SupabaseBackendImplementation implements Implementation {
   supabase: any;
   BUCKET_ID = '';
   DATABASE_TABLE = '';
+  API_URL = '';
 
   constructor(config: CONFIG, options = {}) {
     this.supabase = createClient(
@@ -36,6 +37,7 @@ export default class SupabaseBackendImplementation implements Implementation {
     );
     this.BUCKET_ID = config.backend.bucket;
     this.DATABASE_TABLE = config.backend.databaseTable;
+    this.API_URL = config.backend.url;
   }
 
   authComponent() {
@@ -47,7 +49,10 @@ export default class SupabaseBackendImplementation implements Implementation {
       throw new Error('Login Failed');
     }
     await this.supabase.auth.setSession(credentials.refresh_token);
-    const user = this.supabase.auth.user();
+    const { user, error } = await this.supabase.auth.getUser();
+    if (error) {
+      return Promise.reject(new Error('Not authenticated'));
+    }
     if (user && user.id && user.email) {
       return Promise.resolve({
         ...credentials,
@@ -157,25 +162,26 @@ export default class SupabaseBackendImplementation implements Implementation {
     }
 
     for (const file of files) {
-      const data = await this.supabase.storage
+      const { data } = await this.supabase.storage
         .from(this.BUCKET_ID)
-        .createSignedUrl(file.name, 60);
+        .createSignedUrl(file.name, 3600);
+
       response.push({
         name: file.name,
         id: file.id,
         // @ts-ignore
         size: file.metadata.size,
-        displayURL: data.signedURL,
+        displayURL: data.signedUrl,
         path: file.name,
         draft: false,
-        url: data.signedURL,
+        url: data.signedUrl,
       } as ImplementationMediaFile);
     }
     return Promise.resolve(response);
   }
 
   async getMediaFile(path: string): Promise<ImplementationMediaFile> {
-    const signedFile = await this.supabase.storage
+    const { data: signedFile } = await this.supabase.storage
       .from(this.BUCKET_ID)
       .createSignedUrl(path, 3600);
 
@@ -183,10 +189,10 @@ export default class SupabaseBackendImplementation implements Implementation {
       name: 'name',
       id: path,
       size: 123,
-      displayURL: signedFile.signedURL,
+      displayURL: signedFile.signedUrl,
       path: path,
       draft: false,
-      url: signedFile.signedURL,
+      url: signedFile.signedUrl,
     } as ImplementationMediaFile;
   }
 
@@ -200,6 +206,7 @@ export default class SupabaseBackendImplementation implements Implementation {
   }
 
   async persistEntry(entry: Entry, opts: PersistOptions): Promise<void> {
+    console.log('persistEntry', entry, opts);
     const databaseEntry = {
       data: entry.dataFiles[0].raw,
       path: entry.dataFiles[0].newPath ?? entry.dataFiles[0].path,
@@ -207,10 +214,11 @@ export default class SupabaseBackendImplementation implements Implementation {
     };
 
     if (opts.newEntry) {
-      const { data, error } = await this.supabase
+      const { error } = await this.supabase
         .from(this.DATABASE_TABLE)
         .insert(databaseEntry);
-      if (!data || error) {
+      if (error) {
+        console.log('error', error);
         return Promise.reject(error);
       }
     } else {
@@ -243,7 +251,7 @@ export default class SupabaseBackendImplementation implements Implementation {
       if (!uploadedData) {
         return Promise.resolve(new Error('No data returned from upload'));
       }
-      const { error, data, signedURL } = await this.supabase.storage
+      const { error, data } = await this.supabase.storage
         .from(this.BUCKET_ID)
         .createSignedUrl(filePath, 60);
       if (error) {
@@ -251,12 +259,12 @@ export default class SupabaseBackendImplementation implements Implementation {
       }
       return {
         name: filePath,
-        id: data?.signedURL,
+        id: data?.signedUrl,
         size: uploadedData.size,
-        displayURL: signedURL,
+        displayURL: data.signedUrl,
         path: filePath,
         draft: false,
-        url: signedURL,
+        url: data.signedUrl,
       } as ImplementationMediaFile;
     }
     return Promise.reject(new Error('No file object'));
