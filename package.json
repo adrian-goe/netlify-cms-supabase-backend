@@ -33,7 +33,7 @@
     "@nrwl/web": "14.5.5",
     "@nrwl/workspace": "14.5.5",
     "@testing-library/react": "12.1.5",
-    "@types/jest": "27.4.1",
+    "@types/jest": "27.5.2",
     "@types/node": "16.11.7",
     "@types/react": "17.0.48",
     "@types/react-dom": "17.0.17",
